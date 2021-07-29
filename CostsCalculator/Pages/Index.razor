@@ -1,0 +1,96 @@
+﻿@page "/"
+
+@using FoodCalculator.Data
+@inject CostsService _mealsService
+
+<h1>Food Calculator</h1>
+
+<p>This component demonstrates calculation compensation for meals of worker.</p>
+
+@if (_mealsInfos == null)
+{
+    <p>
+        <em>Loading...</em>
+    </p>
+}
+else
+{
+    <div style="height:600px;overflow:auto;">
+    <table id="dtVerticalScrollExample" class="table" cellspacing="0">
+        <thead>
+        <tr>
+            <th>Date</th>
+            <th>Money</th>
+            <th>DayType</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var meal in _mealsInfos)
+        {
+            if (_editPressed)
+            {
+                <tr class=@meal.Day>
+                    <td>@meal.Date.ToShortDateString()</td>
+                    <td><input type="number" @bind="@meal.BasePay"></td>
+                    <td>
+                        <select @bind="@meal.Day">
+                            <option disabled>@meal.Day</option>
+                            @foreach (var day in (DayType[]) Enum.GetValues(typeof(DayType)))
+                            {
+                                <option value=@day>@day.ToString()</option>
+                            }
+                        </select>
+                    </td>
+                </tr>
+            }
+            else
+            {
+                <tr class=@meal.Day>
+                    <td>@meal.Date.ToShortDateString()</td>
+                    <td>@meal.BasePay</td>
+                    <td>@meal.Day</td>
+                </tr>
+            }
+            
+        }
+        </tbody>
+    </table>
+    </div>
+}
+
+<p>Calculated: @_calculatedData</p>
+
+<button class="btn btn-primary" @onclick="CalculateMeal">Calculate</button>
+<button class="btn btn-primary" @onclick="EditMeals">Edit</button>
+<button class="btn btn-primary" @onclick="RefreshMeals">Refresh</button>
+
+
+@code {
+    private DayInfo[] _mealsInfos;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _mealsInfos = await CostsService.GetRandomDaysAsync(DateTime.Now);
+    }
+
+    int _calculatedData;
+    bool _editPressed;
+        
+    private void CalculateMeal()
+    {
+        _mealsInfos = CostsService.SetFilter(_mealsInfos);
+        _calculatedData = _mealsInfos.Where(x => x.Day == DayType.FirstDay || x.Day == DayType.WorkDay || x.Day == DayType.LastDay).Select(c=> c.BasePay).Sum();
+        _editPressed = false;
+    }
+    
+    private void EditMeals()
+    {
+        _editPressed = !_editPressed;
+    }
+    
+    private async Task RefreshMeals()
+    {
+        _calculatedData = 0;
+        _mealsInfos = await CostsService.GetRandomDaysAsync(DateTime.Now);
+    }
+}

@@ -1,0 +1,102 @@
+﻿@page "/Transport"
+
+@using FoodCalculator.Data
+@inject CostsService _transportService
+
+<h1>Transport Calculator</h1>
+
+<p>This component demonstrates calculation compensation for transport of worker.</p>
+
+@if (_daysInfos == null)
+{
+    <p>
+        <em>Loading...</em>
+    </p>
+}
+else
+{
+    <div style="height:600px;overflow:auto;">
+    <table class="table">
+        <thead>
+        <tr>
+            <th>Date</th>
+            <th>Money</th>
+            <th>DayType</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var meal in _daysInfos)
+        {
+            if (_editPressed)
+            {
+                <tr class=@meal.Day>
+                    <td>@meal.Date.ToShortDateString()</td>
+                    <td><input type="number" @bind="@meal.BasePay"></td>
+                    <td>
+                        <select @bind="@meal.Day">
+                            <option disabled>@meal.Day</option>
+                            @foreach (var day in (DayType[]) Enum.GetValues(typeof(DayType)))
+                            {
+                                <option value=@day>@day.ToString()</option>
+                            }
+                        </select>
+                    </td>
+                </tr>
+            }
+            else
+            {
+                <tr class=@meal.Day>
+                    <td>@meal.Date.ToShortDateString()</td>
+                    <td>@meal.BasePay</td>
+                    <td>@meal.Day</td>
+                </tr>
+            }
+            
+        }
+        </tbody>
+    </table>
+    </div>
+}
+
+<p>Calculated: @_calculatedData</p>
+
+<button class="btn btn-primary" @onclick="CalculateTransport">Calculate</button>
+<button class="btn btn-primary" @onclick="EditTransports">Edit</button>
+<button class="btn btn-primary" @onclick="RefreshTransports">Refresh</button>
+
+
+@code {
+    private DayInfo[] _daysInfos;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _daysInfos = await CostsService.GetRandomDaysAsync(DateTime.Now);
+    }
+
+    int _calculatedData;
+    bool _editPressed;
+    
+    private void CalculateTransport()
+    {
+        _daysInfos = CostsService.SetFilter(_daysInfos);
+        _calculatedData = _daysInfos.Where(x => x.Day == DayType.FirstDay 
+                                                 || x.Day == DayType.WorkDay 
+                                                 || x.Day == DayType.LastDay
+                                                 || x.Day == DayType.Hospital 
+                                                 || x.Day == DayType.Vacation
+                                                 || x.Day == DayType.DayOff
+            ).Select(c=> c.BasePay).Sum();
+        _editPressed = false;
+    }
+    
+    private void EditTransports()
+    {
+        _editPressed = !_editPressed;
+    }
+    
+    private async Task RefreshTransports()
+    {
+        _calculatedData = 0;
+        _daysInfos = await CostsService.GetRandomDaysAsync(DateTime.Now);
+    }
+}
